@@ -1,0 +1,222 @@
+/* --- Theme Variables --- */
+:root {
+  --bg-color: #ffffff;
+  --text-color: #333;
+  --accent-color: #007bff;
+  --accent-color-hover: #0056b3;
+  --subtle-bg-color: #f8f9fa;
+  --border-color: #dee2e6;
+  --subtle-border-color: #e9ecef;
+  --danger-color: #dc3545;
+  --subtle-text-color: #6c757d;
+}
+
+body.dark-mode {
+  --bg-color: #212529;
+  --text-color: #dee2e6;
+  --accent-color: #007bff;
+  --accent-color-hover: #0056b3;
+  --subtle-bg-color: #343a40;
+  --border-color: #495057;
+  --subtle-border-color: #495057;
+  --danger-color: #dc3545;
+  --subtle-text-color: #adb5bd;
+}
+
+/* General Styles */
+body {
+  width: 350px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 12px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Remove Neon effect from H1 */
+h1 {
+  font-size: 1.4em;
+  text-align: center;
+  color: var(--text-color);
+  margin-bottom: 18px;
+  font-weight: 600;
+  text-shadow: none; /* Ensure no shadow */
+}
+
+#translate-button {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--accent-color);
+  border: none;
+  color: #ffffff;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 5px;
+  margin-bottom: 18px;
+}
+
+#translate-button:hover {
+  background-color: var(--accent-color-hover);
+}
+
+#translation-output {
+  text-align: center;
+  font-size: 1.1em;
+  min-height: 22px;
+  padding: 10px;
+  background-color: var(--subtle-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  margin-bottom: 18px;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--subtle-border-color);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.history-header h2 {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+#reset-button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--subtle-text-color);
+  text-decoration: none;
+}
+
+#reset-button:hover {
+  color: var(--danger-color);
+  text-decoration: underline;
+}
+
+/* --- New History List Styles --- */
+#history ul {
+  padding-left: 0;
+  list-style-type: none;
+  margin: 10px 0 0 0;
+}
+
+#history li {
+  list-style: none;
+  margin-bottom: 2px;
+}
+
+.item-title {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.item-title:hover {
+  background-color: var(--subtle-bg-color);
+}
+
+.folder-item > .item-title {
+  font-weight: 600;
+}
+
+.word-item > .item-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.word-item.expanded > .item-title {
+  white-space: normal;
+}
+
+.folder-icon, .word-icon {
+  margin-right: 8px;
+  font-size: 1.1em;
+}
+
+.folder-content {
+  padding-left: 20px;
+  list-style-type: none;
+  border-left: 1px solid var(--subtle-border-color);
+  margin-left: 12px; /* Align with icon */
+}
+
+.details-div {
+  padding: 10px;
+  margin-top: 10px;
+  background-color: var(--bg-color);
+  border: 1px solid var(--subtle-border-color);
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.details-div a {
+  color: var(--accent-color);
+}
+
+/* --- Theme Toggle Switch --- */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+}
+.theme-switch {
+    display: inline-block;
+    height: 20px;
+    position: relative;
+    width: 40px;
+}
+.theme-switch input { display: none; }
+
+.slider {
+    background-color: #ccc;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .4s;
+    border-radius: 20px;
+}
+
+.slider:before {
+    background-color: #fff;
+    bottom: 2px;
+    content: "";
+    height: 16px;
+    left: 2px;
+    position: absolute;
+    transition: .4s;
+    width: 16px;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--accent-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}

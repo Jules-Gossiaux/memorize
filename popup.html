@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Memorize</title>
+  <link rel="stylesheet" type="text/css" href="popup.css">
+</head>
+<body>
+
+  <!-- Main translation view -->
+  <div id="main-view">
+    <div class="header-container">
+      <h1>Memorize</h1>
+      <div class="theme-switch-wrapper">
+        <span id="theme-icon" style="margin-left: 8px; font-size: 1.2em;"></span>
+        <label class="theme-switch" for="theme-checkbox">
+          <input type="checkbox" id="theme-checkbox" />
+          <div class="slider"></div>
+        </label>
+      </div>
+    </div>
+    <button id="translate-button">Traduire le texte sélectionné</button>
+    <div id="translation-output"></div>
+    <hr>
+    <div class="history-header">
+      <h2>Historique</h2>
+      <button id="reset-button" title="Réinitialiser l'historique">Vider</button>
+    </div>
+    <div id="history"></div>
+  </div>
+
+  <!-- Save word confirmation view (hidden by default) -->
+  <div id="save-view" style="display: none;">
+    <h2>Sauvegarder la traduction</h2>
+    <p><strong>Original :</strong> <span id="save-original"></span></p>
+    <p><strong>Traduction :</strong> <span id="save-translated"></span></p>
+    
+    <label for="folder-select">Choisir un dossier :</label>
+    <select id="folder-select"></select>
+    
+    <div id="new-folder-container" style="display: none; margin-top: 10px;">
+        <input type="text" id="new-folder-name" placeholder="Nom du nouveau dossier" />
+    </div>
+
+    <div class="action-buttons">
+        <button id="save-confirm-button">Sauvegarder</button>
+        <button id="save-cancel-button" class="secondary">Annuler</button>
+    </div>
+  </div>
+
+  <script type="module" src="src/popup/index.js"></script>
+</body>
+</html>
