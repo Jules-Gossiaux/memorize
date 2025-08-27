@@ -17,35 +17,51 @@
           <input type="checkbox" id="theme-checkbox" />
           <div class="slider"></div>
         </label>
+        <div id="lang-selectors" style="display:flex;align-items:center;gap:4px;margin-left:16px;">
+          <select id="source-lang-select" style="min-width:80px;">
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="de">Deutsch</option>
+            <option value="it">Italiano</option>
+            <!-- autres langues si besoin -->
+          </select>
+          <span style="font-size:1.2em;">→</span>
+          <select id="target-lang-select" style="min-width:80px;">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+            <option value="de">Deutsch</option>
+            <option value="it">Italiano</option>
+            <!-- autres langues si besoin -->
+          </select>
+        </div>
       </div>
     </div>
     <button id="translate-button">Traduire le texte sélectionné</button>
-    <div id="translation-output"></div>
+
+    <div id="translation-save-container" style="display:none;">
+      <div id="translation-result"></div>
+      <form id="save-form" style="margin-top:10px; display:flex; flex-direction:column; gap:6px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <label for="folder-select" style="font-size:0.95em;">Dossier :</label>
+          <select id="folder-select" style="min-width:100px;"></select>
+          <input type="text" id="new-folder-name" placeholder="Nouveau dossier" style="display:none; min-width:100px;" />
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="save-confirm-button" type="submit">Sauvegarder</button>
+        </div>
+      </form>
+    </div>
     <hr>
     <div class="history-header">
       <h2>Historique</h2>
-      <button id="reset-button" title="Réinitialiser l'historique">Vider</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="reset-button" title="Réinitialiser l'historique">Réinitialiser</button>
+        <button id="delete-selected-button" style="display:none;" title="Supprimer les mots sélectionnés">Supprimer <span id="selected-count">0</span> éléments</button>
+      </div>
     </div>
     <div id="history"></div>
-  </div>
-
-  <!-- Save word confirmation view (hidden by default) -->
-  <div id="save-view" style="display: none;">
-    <h2>Sauvegarder la traduction</h2>
-    <p><strong>Original :</strong> <span id="save-original"></span></p>
-    <p><strong>Traduction :</strong> <span id="save-translated"></span></p>
-    
-    <label for="folder-select">Choisir un dossier :</label>
-    <select id="folder-select"></select>
-    
-    <div id="new-folder-container" style="display: none; margin-top: 10px;">
-        <input type="text" id="new-folder-name" placeholder="Nom du nouveau dossier" />
-    </div>
-
-    <div class="action-buttons">
-        <button id="save-confirm-button">Sauvegarder</button>
-        <button id="save-cancel-button" class="secondary">Annuler</button>
-    </div>
   </div>
 
   <script type="module" src="src/popup/index.js"></script>

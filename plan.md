@@ -3,24 +3,38 @@
 ## Objectif général
 Créer une extension Chrome pour traduire des mots ou phrases sélectionnés, sauvegarder les traductions, organiser le vocabulaire par dossiers, et offrir des outils pour faciliter l'étude et la gestion du vocabulaire dans une langue cible.
 
+
 ## Fonctionnalités principales (actuelles)
-- Traduction de texte sélectionné (API MyMemory, anglais → français)
+- Traduction de texte sélectionné (API MyMemory, multilingue via sélecteur de langue)
+- Sélecteur de langue source/cible dans l'interface (ex : [Français] → [English])
 - Sauvegarde de la traduction et du contexte (URL, phrase, date)
 - Organisation des mots par dossiers (arborescence)
+- Dossiers racine par langue cible (ex : fr, en, es, de...)
+- Création automatique d'un dossier langue si besoin lors de l'ajout d'un mot
 - Historique des traductions consultable
 - Thème clair/sombre
 - Réinitialisation de l'historique
 - Interface popup ergonomique
+
 
 ## Fonctionnalités techniques
 - Utilisation de `chrome.storage.local` pour la persistance
 - Injection de script pour récupérer la sélection et le contexte
 - Découpage du code en modules (UI, stockage, traduction, historique, sélection, utilitaires)
 - Code commenté, structuré et scalable
+- API de traduction paramétrable (source/target)
+- Gestion dynamique des dossiers racine par langue
+
 
 ## Fonctionnalités à venir / améliorations (court terme)
-- [ ] Ne pas afficher la liste d'un dossier parent mais ajouter les mots des dossiers enfants à sa liste. Afficher seulement la liste des dossiers enfants + mots qui ne se trouvent que dans le dossier parent et pas dans le dossier enfant.
+- [V] Ne pas afficher la liste d'un dossier parent mais ajouter les mots des dossiers enfants à sa liste. Afficher seulement la liste des dossiers enfants + mots qui ne se trouvent que dans le dossier parent et pas dans le dossier enfant.
+- [V] Pouvoir sélectionner des mots pour différentes taches, pour l'instant la seule tache est de supprimer seulement les mots cochés
+- [V] Créer des sous-dossiers
+- [V] Ajout d'un sélecteur de langue source/cible dans l'interface
+- [V] Création automatique de dossiers racine par langue cible
 - [ ] Compléter les inputs automatiquement
+    je voudrais que 
+
 
 ## Fonctionnalités à venir / améliorations (court terme)
 - [ ] Exporter l'historique en CSV

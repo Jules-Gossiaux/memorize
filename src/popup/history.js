@@ -19,8 +19,6 @@ export async function saveTranslation(original, translated, url, context, folder
   if (!words[wordId]) {
     words[wordId] = { original, translated, count: 0, occurrences: [] };
   }
-  words[wordId].count++;
-  words[wordId].occurrences.unshift({ url, context, date: now });
 
   let folderId = Object.keys(folders).find(id => folders[id].name.toLowerCase() === folderName.toLowerCase());
   if (!folderId) {
@@ -29,9 +27,14 @@ export async function saveTranslation(original, translated, url, context, folder
     folders.root.children.push(folderId);
   }
 
+  // Incrémente le compteur à chaque vue réelle du mot
+  words[wordId].count++;
+  words[wordId].occurrences.unshift({ url, context, date: now });
+  // Ajoute le mot au dossier si pas déjà présent
   if (!folders[folderId].words.includes(wordId)) {
     folders[folderId].words.push(wordId);
   }
+
 
   await setMemorizeData({ folders, words });
 }

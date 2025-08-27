@@ -1,3 +1,79 @@
+.add-subfolder-btn {
+  cursor: pointer;
+}
+/* --- Bloc traduction + sauvegarde --- */
+#translation-save-container {
+  margin-top: 16px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+#translation-result {
+  font-size: 1.1em;
+  margin-bottom: 8px;
+  color: var(--text-color);
+  font-weight: 500;
+  text-align: center;
+  background: var(--translation-bg, #f5f6fa);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: background 0.2s;
+}
+
+body:not(.dark-mode) #translation-result {
+  --translation-bg: #afafaf;
+}
+body.dark-mode #translation-result {
+  --translation-bg: #181b20;
+}
+
+#save-form {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+#folder-select, #new-folder-name {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  font-size: 1em;
+  min-width: 100px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: border-color 0.2s, background 0.2s;
+}
+#folder-select:hover, #new-folder-name:hover {
+  background: var(--subtle-bg-color);
+}
+#folder-select:focus, #new-folder-name:focus {
+  border-color: var(--accent-color);
+  outline: none;
+}
+
+#save-confirm-button {
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 14px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#save-confirm-button:hover {
+  background: var(--accent-color-hover);
+}
 /* --- Theme Variables --- */
 :root {
   --bg-color: #ffffff;
