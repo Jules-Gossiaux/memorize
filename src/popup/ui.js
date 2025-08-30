@@ -108,7 +108,8 @@ const selectedWordIds = new Set();
 const selectedFolderIds = new Set();
 
 function updateDeleteSelectedButton() {
-  const n = selectedWordIds.size + selectedFolderIds.size;
+  // N'afficher que le nombre de mots sélectionnés (les dossiers ne sont pas supprimés)
+  const n = selectedWordIds.size;
   if (deleteSelectedButton && selectedCountSpan) {
     selectedCountSpan.textContent = n;
     deleteSelectedButton.style.display = n > 0 ? '' : 'none';
@@ -149,13 +150,6 @@ function handleDeleteSelected() {
     }
     
     // Sauvegarder les modifications et réinitialiser l'interface
-    chrome.storage.local.set({ memorizeData: { folders, words } }, () => {
-      loadAndDisplayHistory();
-      selectedWordIds.clear();
-      selectedFolderIds.clear();
-      updateDeleteSelectedButton();
-    });
-
     chrome.storage.local.set({ memorizeData: { folders, words } }, () => {
       loadAndDisplayHistory();
       selectedWordIds.clear();
@@ -405,30 +399,6 @@ function createFolderView(folder, allFolders, allWords, depth) {
   // Mettre à jour visuellement toutes les cases à cocher des mots dans ce dossier et ses sous-dossiers
   updateWordCheckboxesInElement(ul, folderCheckbox.checked);
     
-    // Mettre à jour les sous-dossiers récursivement
-    const subFolderCheckboxes = ul.querySelectorAll('input.folder-checkbox');
-    
-    subFolderCheckboxes.forEach(cb => {
-      if (cb !== folderCheckbox) {
-        // Mettre à jour l'état de la case à cocher
-        cb.checked = folderCheckbox.checked;
-        
-        // Mettre à jour selectedFolderIds pour les sous-dossiers
-        const subFolderId = cb.dataset.folderId;
-        if (subFolderId) {
-          if (folderCheckbox.checked) {
-            selectedFolderIds.add(subFolderId);
-          } else {
-            selectedFolderIds.delete(subFolderId);
-          }
-        }
-        
-        // Déclencher manuellement l'événement change pour propager aux sous-dossiers
-        const changeEvent = new Event('change', { bubbles: true });
-        cb.dispatchEvent(changeEvent);
-      }
-    });
-    
     updateDeleteSelectedButton();
   });
 
@@ -479,9 +449,21 @@ function createFolderView(folder, allFolders, allWords, depth) {
   }
 
   // Construction du titre dossier : case à cocher, icône, nom, poubelle, plus
-  titleDiv.innerHTML = '';
+  // Eviter d'utiliser innerHTML après avoir ajouté des éléments, sinon les listeners sont perdus
+  while (titleDiv.firstChild) titleDiv.removeChild(titleDiv.firstChild);
   titleDiv.appendChild(folderCheckbox);
-  titleDiv.innerHTML += `<span class="folder-icon">📁</span> <span class="folder-name">${folder.name}</span>`;
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'folder-icon';
+  iconSpan.textContent = '📁';
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'folder-name';
+  nameSpan.textContent = folder.name;
+  // espace entre checkbox et icônes
+  const spaceNode = document.createTextNode(' ');
+  titleDiv.appendChild(spaceNode);
+  titleDiv.appendChild(iconSpan);
+  titleDiv.appendChild(document.createTextNode(' '));
+  titleDiv.appendChild(nameSpan);
   if (deleteBtn) titleDiv.appendChild(deleteBtn);
   
   // Bouton ajouter sous-dossier : seulement pour dossiers de langue (pas Racine)
@@ -518,7 +500,7 @@ function createFolderView(folder, allFolders, allWords, depth) {
         });
       });
     });
-    if (deleteBtn) titleDiv.appendChild(addSubfolderBtn);
+  if (deleteBtn) titleDiv.appendChild(addSubfolderBtn);
   }
   
   folderLi.appendChild(titleDiv);

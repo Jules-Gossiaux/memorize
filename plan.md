@@ -32,14 +32,13 @@ Créer une extension Chrome pour traduire des mots ou phrases sélectionnés, sa
 - [V] Créer des sous-dossiers
 - [V] Ajout d'un sélecteur de langue source/cible dans l'interface
 - [V] Création automatique de dossiers racine par langue cible
-- [ ] Compléter les inputs automatiquement
-    je voudrais que 
+- [V] Sélectionner les mots souhaités avec cases à cocher + dossier (si dossier coché, tous les mots de sa liste le sont aussi)
+- [ ] Compléter les inputs automatiquement sur quizlet
 
 
 ## Fonctionnalités à venir / améliorations (court terme)
 - [ ] Exporter l'historique en CSV
 - [ ] Choisir si on veut exporter avec phrases, avec mots ou les deux
-- [ ] Sélectionner les mots souhaités avec cases à cocher + dossier (si dossier coché, tous les mots de sa liste le sont aussi)
 - [ ] Scanner des listes de mots
 
 ## Structure du code (voir arborescence du dossier `src/`)
