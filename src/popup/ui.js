@@ -12,10 +12,23 @@ let deleteSelectedButton, selectedCountSpan;
 let currentTranslationData = {};
 
 
+/**
+ * Met à jour le thème de l'application (clair/sombre)
+ * @param {string} theme - 'light' ou 'dark'
+ */
 export function updateTheme(theme) {
+  // Appliquer la classe CSS appropriée
   document.body.classList.toggle('dark-mode', theme === 'dark');
-  themeCheckbox.checked = (theme === 'dark');
-  themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
+  
+  // Mettre à jour l'état de la case à cocher
+  if (themeCheckbox) {
+    themeCheckbox.checked = (theme === 'dark');
+  }
+  
+  // Mettre à jour l'icône
+  if (themeIcon) {
+    themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
+  }
 }
 
 export function initUI() {
@@ -95,65 +108,53 @@ const selectedWordIds = new Set();
 const selectedFolderIds = new Set();
 
 function updateDeleteSelectedButton() {
-  // Affiche uniquement le nombre de mots sélectionnés
-  const n = selectedWordIds.size;
+  const n = selectedWordIds.size + selectedFolderIds.size;
   if (deleteSelectedButton && selectedCountSpan) {
     selectedCountSpan.textContent = n;
     deleteSelectedButton.style.display = n > 0 ? '' : 'none';
   }
 }
 
+/**
+ * Gère la suppression des mots sélectionnés.
+ * Les mots peuvent être sélectionnés individuellement ou via la sélection d'un dossier.
+ */
 function handleDeleteSelected() {
-  if (selectedWordIds.size === 0 && selectedFolderIds.size === 0) return;
-  const total = selectedWordIds.size + selectedFolderIds.size;
-  if (!confirm(`Supprimer définitivement ${total} élément(s) sélectionné(s) ? (mots et/ou dossiers)`)) return;
-  // Supprime les mots sélectionnés et le contenu des dossiers sélectionnés (mais pas les dossiers eux-mêmes)
+  if (selectedWordIds.size === 0) {
+    alert("Aucun mot sélectionné à supprimer.");
+    console.log("Mots sélectionnés:", selectedWordIds);
+    console.log("Dossiers sélectionnés:", selectedFolderIds);
+    return;
+  }
+  
+  // Confirmation de suppression
+  const totalWords = selectedWordIds.size;
+  if (!confirm(`Supprimer définitivement ${totalWords} mot(s) sélectionné(s) ?`)) return;
+  
+  // Chargement des données
   const initialData = { folders: { root: { name: 'Racine', children: [], words: [] } }, words: {} };
   chrome.storage.local.get({ memorizeData: initialData }, (data) => {
     let { folders, words } = data.memorizeData;
-
-    // Fonction récursive pour supprimer le contenu d'un dossier (mots + sous-dossiers), sans supprimer le dossier lui-même
-    function clearFolderContent(folderName) {
-      let folderId = null;
-      for (const id in folders) {
-        if (folders[id].name === folderName) {
-          folderId = id;
-          break;
-        }
-      }
-      if (!folderId) return;
-      const folder = folders[folderId];
-      // Supprimer tous les mots du dossier
-      for (const wordId of folder.words) {
-        delete words[wordId];
-      }
-      folder.words = [];
-      // Supprimer récursivement le contenu des sous-dossiers puis les sous-dossiers eux-mêmes
-      for (const childId of [...folder.children]) {
-        if (folders[childId]) {
-          clearFolderContent(folders[childId].name);
-          // Supprime le sous-dossier (après vidage)
-          delete folders[childId];
-        }
-      }
-      folder.children = [];
-    }
-
-    // Vider le contenu des dossiers sélectionnés (sans supprimer le dossier lui-même)
-    for (const folderName of selectedFolderIds) {
-      if (folderName === 'Racine') continue;
-      clearFolderContent(folderName);
-    }
-
-    // Supprimer les mots sélectionnés (hors dossiers déjà vidés)
+    
+    // Supprimer tous les mots sélectionnés
     for (const wordId of selectedWordIds) {
+      // Supprimer le mot du dictionnaire
       delete words[wordId];
-      // Supprime le mot de tous les dossiers restants
+      
+      // Supprimer le mot de tous les dossiers
       for (const folderId in folders) {
         const idx = folders[folderId].words.indexOf(wordId);
         if (idx !== -1) folders[folderId].words.splice(idx, 1);
       }
     }
+    
+    // Sauvegarder les modifications et réinitialiser l'interface
+    chrome.storage.local.set({ memorizeData: { folders, words } }, () => {
+      loadAndDisplayHistory();
+      selectedWordIds.clear();
+      selectedFolderIds.clear();
+      updateDeleteSelectedButton();
+    });
 
     chrome.storage.local.set({ memorizeData: { folders, words } }, () => {
       loadAndDisplayHistory();
@@ -341,7 +342,8 @@ function loadAndDisplayHistory() {
 // --- Affichage de l'historique (arborescence dossiers/mots) ---
 function displayHistory(data, historyDivElement) {
   historyDivElement.innerHTML = '';
-  // Ne pas clear selectedWordIds/selectedFolderIds ici !
+  selectedWordIds.clear();
+  selectedFolderIds.clear();
   const { folders, words } = data;
   if (!folders || !folders.root) {
     historyDivElement.textContent = "L'historique est vide.";
@@ -357,40 +359,76 @@ function createFolderView(folder, allFolders, allWords, depth) {
   const folderLi = document.createElement('li');
   folderLi.className = 'folder-item';
   folderLi.style.paddingLeft = `${depth * 20}px`;
+  
   const titleDiv = document.createElement('div');
   titleDiv.className = 'item-title';
+  
   // Ajout case à cocher dossier
   const folderCheckbox = document.createElement('input');
   folderCheckbox.type = 'checkbox';
   folderCheckbox.className = 'folder-checkbox';
   folderCheckbox.style.marginRight = '6px';
-  folderCheckbox.dataset.folderName = folder.name;
-  // Détermine l'état visuel de la case dossier en fonction des mots sélectionnés
-  const __allWordIdsForFolder = new Set();
-  getAllWordsRecursively(folder, allFolders, __allWordIdsForFolder);
-  folderCheckbox.checked = __allWordIdsForFolder.size > 0 && [...__allWordIdsForFolder].every(id => selectedWordIds.has(id));
-  // Empêche le clic sur la case à cocher d'ouvrir/fermer le dossier
-  folderCheckbox.addEventListener('click', (e) => e.stopPropagation());
+  
+  // Stocker l'ID du dossier comme attribut de données
+  const folderId = Object.keys(allFolders).find(id => allFolders[id] === folder);
+  folderCheckbox.dataset.folderId = folderId;
+  
   folderCheckbox.addEventListener('change', () => {
     const ul = folderLi.querySelector('ul.folder-content');
     if (!ul) return;
-    // Sélectionne/désélectionne tous les mots du dossier et sous-dossiers
-    const wordIdsToToggle = new Set();
-    getAllWordsRecursively(folder, allFolders, wordIdsToToggle);
+    
+    // Sélectionner le dossier dans la liste des dossiers sélectionnés
     if (folderCheckbox.checked) {
-      wordIdsToToggle.forEach(wordId => selectedWordIds.add(wordId));
+      selectedFolderIds.add(folderId);
     } else {
-      wordIdsToToggle.forEach(wordId => selectedWordIds.delete(wordId));
+      selectedFolderIds.delete(folderId);
     }
-    // Met à jour l'état visuel de toutes les cases mots concernées (même dans sous-dossiers repliés)
-    const allWordCheckboxes = document.querySelectorAll('input.word-checkbox');
-    allWordCheckboxes.forEach(cb => {
-      const wId = cb.dataset.wordId;
-      if (wordIdsToToggle.has(wId)) cb.checked = folderCheckbox.checked;
+    
+    // Développer le dossier pour montrer la sélection visuelle
+    if (folderCheckbox.checked && ul.style.display !== 'block') {
+      ul.style.display = 'block';
+      titleDiv.querySelector('.folder-icon').textContent = '📂';
+    }
+    
+    // Récupérer tous les mots de ce dossier et ses sous-dossiers
+    const allFolderWords = getAllWordsInHierarchy(folder, allFolders);
+    
+    // Mettre à jour selectedWordIds
+    allFolderWords.forEach(wordId => {
+      if (folderCheckbox.checked) {
+        selectedWordIds.add(wordId);
+      } else {
+        selectedWordIds.delete(wordId);
+      }
     });
-    // Met à jour l'état visuel des cases dossiers descendants (cosmétique)
-    const folderCheckboxes = ul.querySelectorAll('input.folder-checkbox');
-    folderCheckboxes.forEach(cb => { if (cb !== folderCheckbox) cb.checked = folderCheckbox.checked; });
+    
+  // Mettre à jour visuellement toutes les cases à cocher des mots dans ce dossier et ses sous-dossiers
+  updateWordCheckboxesInElement(ul, folderCheckbox.checked);
+    
+    // Mettre à jour les sous-dossiers récursivement
+    const subFolderCheckboxes = ul.querySelectorAll('input.folder-checkbox');
+    
+    subFolderCheckboxes.forEach(cb => {
+      if (cb !== folderCheckbox) {
+        // Mettre à jour l'état de la case à cocher
+        cb.checked = folderCheckbox.checked;
+        
+        // Mettre à jour selectedFolderIds pour les sous-dossiers
+        const subFolderId = cb.dataset.folderId;
+        if (subFolderId) {
+          if (folderCheckbox.checked) {
+            selectedFolderIds.add(subFolderId);
+          } else {
+            selectedFolderIds.delete(subFolderId);
+          }
+        }
+        
+        // Déclencher manuellement l'événement change pour propager aux sous-dossiers
+        const changeEvent = new Event('change', { bubbles: true });
+        cb.dispatchEvent(changeEvent);
+      }
+    });
+    
     updateDeleteSelectedButton();
   });
 
@@ -445,8 +483,8 @@ function createFolderView(folder, allFolders, allWords, depth) {
   titleDiv.appendChild(folderCheckbox);
   titleDiv.innerHTML += `<span class="folder-icon">📁</span> <span class="folder-name">${folder.name}</span>`;
   if (deleteBtn) titleDiv.appendChild(deleteBtn);
+  
   // Bouton ajouter sous-dossier : seulement pour dossiers de langue (pas Racine)
-  // Affiche tous les sous-dossiers, mais n'autorise le bouton + que dans les dossiers de langue
   if (folder.name !== 'Racine') {
     const addSubfolderBtn = document.createElement('button');
     addSubfolderBtn.textContent = '+';
@@ -482,6 +520,7 @@ function createFolderView(folder, allFolders, allWords, depth) {
     });
     if (deleteBtn) titleDiv.appendChild(addSubfolderBtn);
   }
+  
   folderLi.appendChild(titleDiv);
   const contentUl = document.createElement('ul');
   contentUl.className = 'folder-content';
@@ -495,87 +534,189 @@ function createFolderView(folder, allFolders, allWords, depth) {
       getAllWordsRecursively(childFolder, allFolders, childWordSet);
     }
   }
+  
   // 2. Afficher les mots du dossier courant qui ne sont pas dans les enfants
   for (const wordId of folder.words) {
     if (!childWordSet.has(wordId) && allWords[wordId]) {
       contentUl.appendChild(createWordView(allWords[wordId]));
     }
   }
+  
   // 3. Afficher les dossiers enfants
   for (const childId of folder.children) {
     contentUl.appendChild(createFolderView(allFolders[childId], allFolders, allWords, depth + 1));
   }
+  
   folderLi.appendChild(contentUl);
-  titleDiv.addEventListener('click', () => {
+  
+  titleDiv.addEventListener('click', (e) => {
+    // Ne pas déclencher le clic si on clique sur une checkbox ou un bouton
+    if (e.target.type === 'checkbox' || e.target.tagName === 'BUTTON') {
+      return;
+    }
+    
     const isExpanded = contentUl.style.display === 'block';
     contentUl.style.display = isExpanded ? 'none' : 'block';
     titleDiv.querySelector('.folder-icon').textContent = isExpanded ? '📁' : '📂';
   });
+  
   return folderLi;
 }
 
 // Récupère tous les mots d'un dossier et de ses enfants (récursif)
+/**
+ * Récupère récursivement tous les mots d'un dossier et de ses sous-dossiers.
+ * @param {Object} folder - Le dossier à analyser
+ * @param {Object} allFolders - Dictionnaire de tous les dossiers
+ * @param {Set} wordSet - Set pour collecter les IDs des mots
+ */
 function getAllWordsRecursively(folder, allFolders, wordSet) {
-  for (const wordId of folder.words) {
-    wordSet.add(wordId);
+  if (!folder) return;
+  
+  // Ajouter les mots directs du dossier
+  if (folder.words && Array.isArray(folder.words)) {
+    folder.words.forEach(wordId => {
+      if (wordId) {
+        wordSet.add(wordId);
+      }
+    });
   }
-  for (const childId of folder.children) {
-    const childFolder = allFolders[childId];
-    if (childFolder) {
-      getAllWordsRecursively(childFolder, allFolders, wordSet);
-    }
+  
+  // Récursion sur les sous-dossiers
+  if (folder.children && Array.isArray(folder.children)) {
+    folder.children.forEach(childId => {
+      const childFolder = allFolders[childId];
+      if (childFolder) {
+        getAllWordsRecursively(childFolder, allFolders, wordSet);
+      }
+    });
   }
 }
 
 
+/**
+ * Crée la vue d'un mot dans l'interface utilisateur
+ * @param {Object} wordData - Données du mot
+ * @returns {HTMLElement} L'élément li représentant le mot
+ */
 function createWordView(wordData) {
   const li = document.createElement('li');
   li.className = 'word-item';
-  // Case à cocher
+  
+  // Stocker l'ID du mot dans l'élément
+  const wordId = wordData.original.toLowerCase();
+  li.dataset.wordId = wordId;
+  
+  // Case à cocher pour la sélection
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = 'word-checkbox';
   checkbox.style.marginRight = '6px';
-  // Identifiant unique du mot pour synchroniser globalement
-  checkbox.dataset.wordId = wordData.original.toLowerCase();
-  // Synchronise l'état visuel avec selectedWordIds
-  checkbox.checked = selectedWordIds.has(wordData.original.toLowerCase());
+  
+  // Gestion de la sélection du mot
   checkbox.addEventListener('change', () => {
     if (checkbox.checked) {
-      selectedWordIds.add(wordData.original.toLowerCase());
+      selectedWordIds.add(wordId);
     } else {
-      selectedWordIds.delete(wordData.original.toLowerCase());
+      selectedWordIds.delete(wordId);
     }
     updateDeleteSelectedButton();
   });
-  // Ligne mot (ajout espace après compteur)
-  li.innerHTML = `<div class="item-title"><span class="word-count" style="min-width:2.2em;display:inline-block;text-align:right;font-weight:600;">(${wordData.count}) </span> <b>${wordData.original}</b> → ${wordData.translated}</div>`;
-  li.querySelector('.item-title').prepend(checkbox);
-  // Toggle des détails au clic sur la ligne (hors liens/checkbox)
+  
+  // Construction de la ligne du mot avec le compteur de vues
+  const itemTitle = document.createElement('div');
+  itemTitle.className = 'item-title';
+  
+  // Compteur de vues
+  const countSpan = document.createElement('span');
+  countSpan.className = 'word-count';
+  countSpan.style.minWidth = '2.2em';
+  countSpan.style.display = 'inline-block';
+  countSpan.style.textAlign = 'right';
+  countSpan.style.fontWeight = '600';
+  countSpan.textContent = `(${wordData.count}) `;
+  
+  // Mot et traduction
+  const wordContent = document.createElement('span');
+  wordContent.innerHTML = `<b>${wordData.original}</b> → ${wordData.translated}`;
+  
+  // Assembler la ligne
+  itemTitle.appendChild(checkbox);
+  itemTitle.appendChild(countSpan);
+  itemTitle.appendChild(wordContent);
+  li.appendChild(itemTitle);
+  
+  // Gestion de l'affichage des détails (occurrences)
   li.addEventListener('click', (e) => {
-    if (e.target.closest('.details-div') || e.target.tagName === 'A' || e.target.classList.contains('word-checkbox')) return;
+    // Ne pas réagir aux clics sur les liens, checkboxes ou zone de détails
+    if (e.target.closest('.details-div') || 
+        e.target.tagName === 'A' || 
+        e.target.classList.contains('word-checkbox')) {
+      return;
+    }
+    
     li.classList.toggle('expanded');
     let detailsDiv = li.querySelector('.details-div');
+    
     if (detailsDiv) {
       detailsDiv.remove();
     } else {
       detailsDiv = document.createElement('div');
       detailsDiv.className = 'details-div';
+      
+      // Afficher chaque occurrence du mot
       wordData.occurrences.forEach(occ => {
         const p = document.createElement('p');
-        p.innerHTML = `Trouvé sur: <a href="${occ.url}" target="_blank">${occ.url.substring(0,40)}...</a><br>Contexte: <em>${occ.context.substring(0,100)}...</em>`;
+        p.innerHTML = `
+          Trouvé sur: <a href="${occ.url}" target="_blank">${occ.url.substring(0, 40)}...</a><br>
+          Contexte: <em>${occ.context.substring(0, 100)}...</em>
+        `;
         detailsDiv.appendChild(p);
       });
+      
       li.appendChild(detailsDiv);
     }
   });
+  
   return li;
 }
 
+/**
+ * Obtient tous les mots d'un dossier et de ses sous-dossiers sous forme de tableau.
+ * @param {Object} folder - Le dossier à analyser
+ * @param {Object} allFolders - Dictionnaire de tous les dossiers
+ * @returns {string[]} Liste des IDs de mots sans doublons
+ */
 function getAllWordsInHierarchy(folder, allFolders) {
-  let words = [...folder.words];
-  for (const childId of folder.children) {
-    words = words.concat(getAllWordsInHierarchy(allFolders[childId], allFolders));
+  if (!folder) return [];
+  
+  // Créer un Set pour stocker les IDs uniques des mots
+  const wordSet = new Set();
+  
+  // Si le dossier contient directement des mots, les ajouter au Set
+  if (folder.words && Array.isArray(folder.words)) {
+    folder.words.forEach(wordId => wordSet.add(wordId));
   }
-  return [...new Set(words)];
+  
+  // Récupérer récursivement les mots des sous-dossiers
+  getAllWordsRecursively(folder, allFolders, wordSet);
+  
+  // Convertir le Set en tableau et le retourner
+  return Array.from(wordSet);
+}
+
+/**
+ * Met à jour les cases à cocher de mots dans un sous-arbre DOM et déclenche 'change'
+ * pour synchroniser selectedWordIds via leurs listeners individuels.
+ */
+function updateWordCheckboxesInElement(rootElement, checked) {
+  if (!rootElement) return;
+  const checkboxes = rootElement.querySelectorAll('input.word-checkbox');
+  checkboxes.forEach(cb => {
+    // Eviter les dispatch inutiles si l'état est déjà correct
+    if (cb.checked !== checked) {
+      cb.checked = checked;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
 }
