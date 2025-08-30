@@ -5,10 +5,12 @@ import { saveTranslation, loadHistory } from './history.js';
 import { getSelectionDetails } from './selection.js';
 
 // --- UI Elements ---
+
 let mainView, themeCheckbox, themeIcon, translateButton, historyDiv, resetButton;
 let translationSaveContainer, translationResult, saveForm, folderSelect, newFolderNameInput, saveConfirmButton;
 let sourceLangSelect, targetLangSelect;
 let deleteSelectedButton, selectedCountSpan;
+let quizletListTranslateButton;
 let currentTranslationData = {};
 
 
@@ -52,6 +54,80 @@ export function initUI() {
 
   deleteSelectedButton = document.getElementById('delete-selected-button');
   selectedCountSpan = document.getElementById('selected-count');
+
+  quizletListTranslateButton = document.getElementById('quizlet-list-translate-button');
+  if (quizletListTranslateButton) {
+    quizletListTranslateButton.addEventListener('click', handleQuizletListTranslate);
+    // Par défaut, désactive le bouton
+    quizletListTranslateButton.classList.add('transparent');
+    quizletListTranslateButton.disabled = true;
+    // Vérifie si l'onglet actif est une page Quizlet compatible
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs[0];
+      if (tab && tab.url && tab.url.includes('quizlet.com')) {
+        quizletListTranslateButton.classList.remove('transparent');
+        quizletListTranslateButton.disabled = false;
+      }
+    });
+  }
+// Handler pour le bouton "Traduire la liste" (squelette, à compléter)
+async function handleQuizletListTranslate() {
+  if (quizletListTranslateButton.disabled) return;
+  // Récupère les langues sélectionnées
+  const sourceLang = sourceLangSelect ? sourceLangSelect.value : 'fr';
+  const targetLang = targetLangSelect ? targetLangSelect.value : 'en';
+  // Injection du script dans l'onglet Quizlet
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs[0];
+    if (!tab || !tab.id) return;
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async (sourceLang, targetLang) => {
+        // Récupère tous les couples (mot source, champ traduction vide)
+        const rows = Array.from(document.querySelectorAll('.ProseMirror'));
+        // On suppose alternance : source, traduction, source, traduction...
+        let pairs = [];
+        for (let i = 0; i < rows.length - 1; i += 2) {
+          const sourceDiv = rows[i];
+          const targetDiv = rows[i + 1];
+          const sourceText = sourceDiv.innerText.trim();
+          const targetText = targetDiv.innerText.trim();
+          if (sourceText && (!targetText || targetText === '\u200b' || targetText === '')) {
+            pairs.push({ sourceDiv, targetDiv, sourceText });
+          }
+        }
+        if (pairs.length === 0) {
+          alert('Aucune case à compléter trouvée.');
+          return;
+        }
+        // Fonction de traduction via API MyMemory
+        async function translate(text, sourceLang, targetLang) {
+          const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+          const response = await fetch(url);
+          const data = await response.json();
+          if (data.responseData && data.responseData.translatedText) {
+            return data.responseData.translatedText;
+          }
+          return '';
+        }
+        for (const { sourceDiv, targetDiv, sourceText } of pairs) {
+          try {
+            const translated = await translate(sourceText, sourceLang, targetLang);
+            // Remplit le champ cible (ProseMirror)
+            targetDiv.innerHTML = `<p>${translated}</p>`;
+            // Simule un événement d'entrée pour déclencher la sauvegarde Quizlet
+            const event = new Event('input', { bubbles: true });
+            targetDiv.dispatchEvent(event);
+          } catch (e) {
+            targetDiv.innerHTML = `<p>Erreur traduction</p>`;
+          }
+        }
+        alert('Complétion automatique terminée !');
+      },
+      args: [sourceLang, targetLang]
+    });
+  });
+}
   // Persistance du choix de langue (optionnel)
   if (sourceLangSelect && targetLangSelect) {
     const langStorageKey = 'memorizeLangPrefs';

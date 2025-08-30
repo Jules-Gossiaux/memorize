@@ -1,3 +1,26 @@
+#quizlet-list-translate-button {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--accent-color);
+  border: none;
+  color: #ffffff;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+#quizlet-list-translate-button.transparent {
+  background-color: transparent;
+  color: var(--subtle-text-color);
+  border: 1px dashed var(--subtle-border-color);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+#quizlet-list-translate-button:not(.transparent):hover {
+  background-color: var(--accent-color-hover);
+}
 .add-subfolder-btn {
   cursor: pointer;
 }
