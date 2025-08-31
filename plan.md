@@ -33,15 +33,19 @@ Créer une extension Chrome pour traduire des mots ou phrases sélectionnés, sa
 - [V] Ajout d'un sélecteur de langue source/cible dans l'interface
 - [V] Création automatique de dossiers racine par langue cible
 - [V] Sélectionner les mots souhaités avec cases à cocher + dossier (si dossier coché, tous les mots de sa liste le sont aussi)
-- [ ] Compléter les inputs automatiquement sur quizlet
-- [ ] Ajouter un historique en plus des listes
-- [ ] Completer une liste quizlet avec une liste memorize
-- [ ] Trouver une meilleure api de traduction
+- [V] Compléter les inputs automatiquement sur quizlet
+- [V] Ajouter un historique en plus des listes
+- [V] Ajouter un bouton + pour ajouter des dossiers au dossier racine
+- [ ] Lorsque l' on appuye sur le bouton "Traduire le texte selectionne", le compteur de vues du mot s' actualise (pour l' instant, seulement lorsque l' on sauvegarde le mot)
 
 
 ## Fonctionnalités à venir / améliorations (court terme)
+- [ ] Aucun dossier ne doit se trouver en dehors d' un dossier langue (ex: pour un mot anglais, le dossier ne doit pas se trouver en dehors du dossier en)
+- [ ] Completer une liste quizlet avec une liste memorize
+- [ ] Ajouter une option clic droit
+- [ ] Trouver une meilleure api de traduction
 - [ ] Exporter l'historique en CSV
-- [ ] Choisir si on veut exporter avec phrases, avec mots ou les deux
+- [ ] Choisir si on veut exporter/completer une liste quizlet avec phrases, avec mots ou les deux
 - [ ] Scanner des listes de mots
 
 ## Structure du code (voir arborescence du dossier `src/`)

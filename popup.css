@@ -197,6 +197,21 @@ hr {
   font-weight: 600;
 }
 
+.history-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  flex: 1;
+}
+
 #reset-button {
   border: none;
   background: none;
@@ -204,6 +219,7 @@ hr {
   font-size: 0.85em;
   color: var(--subtle-text-color);
   text-decoration: none;
+  margin-left: auto;
 }
 
 #reset-button:hover {

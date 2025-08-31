@@ -1,7 +1,7 @@
 // Fonctions liées à l'UI de la popup
 
 import { translateText } from './translation.js';
-import { saveTranslation, loadHistory } from './history.js';
+import { saveTranslation, loadHistory, getHistory } from './history.js';
 import { getSelectionDetails } from './selection.js';
 
 // --- UI Elements ---
@@ -70,7 +70,7 @@ export function initUI() {
       }
     });
   }
-// Handler pour le bouton "Traduire la liste" (squelette, à compléter)
+// Handler pour le bouton "Traduire la liste"
 async function handleQuizletListTranslate() {
   if (quizletListTranslateButton.disabled) return;
   // Récupère les langues sélectionnées
@@ -392,21 +392,89 @@ function handleSaveConfirm(e) {
   });
 }
 
+
 function handleResetHistory() {
-  const confirmation = confirm("Êtes-vous sûr de vouloir vider tout l'historique ? Cette action est irréversible.");
+  const confirmation = confirm("Êtes-vous sûr de vouloir vider tout l'historique chronologique ? Cette action est irréversible.");
   if (confirmation) {
-    const initialData = { folders: { root: { name: 'Racine', children: [], words: [] } }, words: {} };
-    chrome.storage.local.set({ memorizeData: initialData }, () => {
+    chrome.storage.local.set({ memorizeHistory: [] }, () => {
       loadAndDisplayHistory();
     });
   }
 }
 
+
+
+
 function loadAndDisplayHistory() {
+  // Affiche l'historique séparé (chronologique) dans son propre conteneur
+  const historyChronoDiv = document.getElementById('history-chronological');
+  if (historyChronoDiv) {
+    getHistory().then(historyArr => {
+      displaySeparateHistory(historyArr, historyChronoDiv);
+    });
+  }
+  // Puis l'arborescence des dossiers dans #history
   loadHistory().then(data => {
     displayHistory(data, historyDiv);
     updateDeleteSelectedButton();
   });
+}
+
+// Affiche l'historique séparé (chronologique)
+function displaySeparateHistory(historyArr, historyDivElement) {
+  // En-tête
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Historique (chronologique)';
+  h2.style.fontSize = '1.1em';
+  h2.style.margin = '10px 0 4px 0';
+  historyDivElement.innerHTML = '';
+  historyDivElement.appendChild(h2);
+  if (!historyArr || historyArr.length === 0) {
+    const p = document.createElement('p');
+    p.textContent = 'Aucune traduction récente.';
+    historyDivElement.appendChild(p);
+    return;
+  }
+  const ul = document.createElement('ul');
+  ul.style.listStyle = 'none';
+  ul.style.padding = '0';
+  ul.style.margin = '0';
+  ul.style.maxHeight = 'none';
+  ul.style.overflowY = 'hidden';
+  let expanded = false;
+
+  // Fonction pour afficher n mots (ou tous)
+  function renderHistory(n) {
+    ul.innerHTML = '';
+    const toShow = n === 'all' ? historyArr : historyArr.slice(0, n);
+    toShow.forEach(entry => {
+      const li = document.createElement('li');
+      li.style.marginBottom = '6px';
+      li.innerHTML = `<b>${entry.original}</b> → <b>${entry.translated}</b><br><span style='font-size:0.85em;color:var(--subtle-text-color);'>${new Date(entry.date).toLocaleString()}${entry.url ? ` | <a href='${entry.url}' target='_blank'>lien</a>` : ''}</span>`;
+      ul.appendChild(li);
+    });
+    if (n === 'all') {
+      ul.style.maxHeight = '12em'; // Limite visuelle raisonnable
+      ul.style.overflowY = 'auto';
+    } else {
+      ul.style.maxHeight = 'none';
+      ul.style.overflowY = 'hidden';
+    }
+  }
+
+  renderHistory(1);
+  ul.style.cursor = 'pointer';
+  ul.title = "Cliquez pour voir tout l'historique";
+  ul.addEventListener('click', (e) => {
+    expanded = !expanded;
+    renderHistory(expanded ? 'all' : 1);
+    ul.title = expanded ? "Cliquez pour réduire l'historique" : "Cliquez pour voir tout l'historique";
+  });
+  historyDivElement.appendChild(ul);
+  // Séparateur visuel
+  const hr = document.createElement('hr');
+  hr.style.margin = '10px 0';
+  historyDivElement.appendChild(hr);
 }
 
 // --- Affichage de l'historique (arborescence dossiers/mots) ---
@@ -541,7 +609,7 @@ function createFolderView(folder, allFolders, allWords, depth) {
   titleDiv.appendChild(document.createTextNode(' '));
   titleDiv.appendChild(nameSpan);
   if (deleteBtn) titleDiv.appendChild(deleteBtn);
-  
+
   // Bouton ajouter sous-dossier : seulement pour dossiers de langue (pas Racine)
   if (folder.name !== 'Racine') {
     const addSubfolderBtn = document.createElement('button');
@@ -576,9 +644,44 @@ function createFolderView(folder, allFolders, allWords, depth) {
         });
       });
     });
-  if (deleteBtn) titleDiv.appendChild(addSubfolderBtn);
+    titleDiv.appendChild(addSubfolderBtn);
   }
-  
+
+  // Bouton ajouter dossier enfant à la racine (langue source)
+  if (folder.name === 'Racine') {
+    const addLangFolderBtn = document.createElement('button');
+    addLangFolderBtn.textContent = '+';
+    addLangFolderBtn.title = 'Ajouter un dossier langue à la racine';
+    addLangFolderBtn.className = 'add-langfolder-btn';
+    addLangFolderBtn.style.marginLeft = '8px';
+    addLangFolderBtn.style.fontSize = '1em';
+    addLangFolderBtn.style.padding = '0 6px';
+    addLangFolderBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Utilise la langue source sélectionnée
+      let lang = 'fr';
+      const select = document.getElementById('source-lang-select');
+      if (select && select.value) lang = select.value;
+      // Vérifie si un dossier de cette langue existe déjà
+      for (const id in allFolders) {
+        if (allFolders[id].name === lang) {
+          alert('Un dossier pour cette langue existe déjà.');
+          return;
+        }
+      }
+      chrome.storage.local.get({ memorizeData: { folders: {}, words: {} } }, (data) => {
+        const { folders, words } = data.memorizeData;
+        const newId = 'f_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+        folders[newId] = { name: lang, children: [], words: [] };
+        folders.root.children.push(newId);
+        chrome.storage.local.set({ memorizeData: { folders, words } }, () => {
+          loadAndDisplayHistory();
+        });
+      });
+    });
+    titleDiv.appendChild(addLangFolderBtn);
+  }
+
   folderLi.appendChild(titleDiv);
   const contentUl = document.createElement('ul');
   contentUl.className = 'folder-content';
