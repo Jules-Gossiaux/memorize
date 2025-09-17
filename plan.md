@@ -26,6 +26,12 @@ Créer une extension Chrome pour traduire des mots ou phrases sélectionnés, sa
 - Gestion dynamique des dossiers racine par langue
 
 
+## Problèmes à régler
+- Ajouter des logs d’erreur ou un mode debug activable.
+- Préparer l’extension à l’internationalisation (i18n) si besoin.
+- Séparer la logique métier (gestion dossiers/mots) de l’UI pour faciliter l’évolution.
+
+
 ## Fonctionnalités à venir / améliorations (court terme)
 - [V] Ne pas afficher la liste d'un dossier parent mais ajouter les mots des dossiers enfants à sa liste. Afficher seulement la liste des dossiers enfants + mots qui ne se trouvent que dans le dossier parent et pas dans le dossier enfant.
 - [V] Pouvoir sélectionner des mots pour différentes taches, pour l'instant la seule tache est de supprimer seulement les mots cochés
@@ -37,6 +43,8 @@ Créer une extension Chrome pour traduire des mots ou phrases sélectionnés, sa
 - [V] Ajouter un historique en plus des listes
 - [V] Ajouter un bouton + pour ajouter des dossiers au dossier racine
 - [ ] Lorsque l' on appuye sur le bouton "Traduire le texte selectionne", le compteur de vues du mot s' actualise (pour l' instant, seulement lorsque l' on sauvegarde le mot)
+lorsque l'on créée un dossier lors de la traduction d'un mot, il s'ajoute dans le dossier racine au lieu du dossier langue
+L'autocompletion quizlet ne fonctionne plus
 
 
 ## Fonctionnalités à venir / améliorations (court terme)

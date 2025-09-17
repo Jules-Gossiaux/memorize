@@ -1,0 +1,18 @@
+# Enforce consistent line endings in repo
+* text=auto eol=lf
+
+# Keep Windows-script files with CRLF on checkout
+*.bat eol=crlf
+*.cmd eol=crlf
+*.ps1 eol=crlf
+
+# Images/binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+
+# Do not apply text/EOL normalization inside node_modules
+# (prevents warnings for vendor files)
+node_modules/** -text

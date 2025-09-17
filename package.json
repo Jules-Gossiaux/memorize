@@ -1,0 +1,16 @@
+{
+  "name": "memorize-extension",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0"
+  },
+  "jest": {
+  "extensionsToTreatAsEsm": [".mjs"],
+    "testMatch": ["**/tests/**/*.[jt]s?(x)", "**/tests/**/*.[jt]est.mjs"]
+  }
+}
