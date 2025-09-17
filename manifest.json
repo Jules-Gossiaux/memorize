@@ -4,11 +4,13 @@
   "version": "1.0",
   "description": "Translate selected text and save it.",
   "permissions": [
-    "storage",
-    "scripting"
+  "storage",
+  "scripting",
+  "activeTab"
   ],
   "host_permissions": [
-    "<all_urls>"
+  "<all_urls>",
+  "*://quizlet.com/*"
   ],
   "action": {
     "default_popup": "popup.html"
@@ -16,4 +18,12 @@
   "background": {
     "service_worker": "background.js"
   }
+  ,
+  "content_scripts": [
+    {
+      "matches": ["*://quizlet.com/create-set*", "*://www.quizlet.com/create-set*"],
+      "js": ["src/utils/quizlet_autofill.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }

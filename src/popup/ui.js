@@ -12,6 +12,7 @@ let sourceLangSelect, targetLangSelect;
 let deleteSelectedButton, selectedCountSpan;
 let quizletListTranslateButton;
 let currentTranslationData = {};
+let quizletAutofillToggle, applyQuizletNowButton;
 
 
 /**
@@ -51,6 +52,8 @@ export function initUI() {
 
   sourceLangSelect = document.getElementById('source-lang-select');
   targetLangSelect = document.getElementById('target-lang-select');
+  quizletAutofillToggle = document.getElementById('quizlet-autofill-toggle');
+  applyQuizletNowButton = document.getElementById('apply-quizlet-now');
 
   deleteSelectedButton = document.getElementById('delete-selected-button');
   selectedCountSpan = document.getElementById('selected-count');
@@ -143,6 +146,63 @@ async function handleQuizletListTranslate() {
     });
     targetLangSelect.addEventListener('change', () => {
       chrome.storage.sync.set({ [langStorageKey]: { source: sourceLangSelect.value, target: targetLangSelect.value } });
+    });
+  }
+
+  // Quizlet autofill toggle
+  if (quizletAutofillToggle) {
+    chrome.storage.sync.get('quizletAutofillEnabled', data => {
+      quizletAutofillToggle.checked = Boolean(data.quizletAutofillEnabled);
+    });
+    quizletAutofillToggle.addEventListener('change', () => {
+      const enabled = quizletAutofillToggle.checked;
+      chrome.storage.sync.set({ quizletAutofillEnabled: enabled });
+  // Envoyer message aux onglets Quizlet pour activer/désactiver (robuste)
+  robustSendMessageToQuizletTabs({ action: 'setEnabled', enabled });
+    });
+  }
+
+  if (applyQuizletNowButton) {
+    applyQuizletNowButton.addEventListener('click', () => {
+      robustSendMessageToQuizletTabs({ action: 'applyNow' });
+    });
+  }
+
+  /**
+   * Envoie un message à tous les onglets Quizlet, avec fallback d'injection
+   * si le content script n'est pas présent (évite "Could not establish connection").
+   * @param {Object} message
+   */
+  function robustSendMessageToQuizletTabs(message) {
+    chrome.tabs.query({ url: '*://*.quizlet.com/*' }, (tabs) => {
+      if (!tabs || tabs.length === 0) return;
+      tabs.forEach(tab => {
+        if (!tab.id) return;
+        // Première tentative
+        chrome.tabs.sendMessage(tab.id, message, (response) => {
+          // Toujours consommer lastError pour éviter "Unchecked runtime.lastError"
+          const err = chrome.runtime.lastError;
+          if (!err) return; // tout va bien
+          // Si le port s'est fermé avant une réponse, c'est généralement non fatal. Si c'est une autre erreur,
+          // on tente l'injection du content script et on renvoie après un court délai.
+          const msg = (err && err.message) || '';
+          if (msg.includes('The message port closed before a response was received')) {
+            // rien à faire de plus
+            return;
+          }
+          // Tenter d'injecter puis renvoyer après un petit délai
+          try {
+            chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['src/utils/quizlet_autofill.js'] }, () => {
+              // Petite attente pour laisser le script s'installer
+              setTimeout(() => {
+                try { chrome.tabs.sendMessage(tab.id, message, (r) => { /* consume lastError */ if (chrome.runtime.lastError) {/* ignore */} }); } catch (e) {}
+              }, 350);
+            });
+          } catch (e) {
+            // ignore
+          }
+        });
+      });
     });
   }
 
