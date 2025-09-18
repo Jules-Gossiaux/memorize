@@ -12,7 +12,8 @@ export { updateTheme } from './theme.js';
 // --- UI Elements ---
 
 let mainView, themeCheckbox, themeIcon, translateButton, historyDiv, resetButton;
-let translationSaveContainer, translationResult, saveForm, folderSelect, newFolderNameInput, saveConfirmButton;
+let translationSaveContainer, translationResult;
+let folderMoveSelect, newFolderMoveNameInput;
 let sourceLangSelect, targetLangSelect;
 let deleteSelectedButton, selectedCountSpan;
 let quizletListTranslateButton;
@@ -33,10 +34,8 @@ export function initUI() {
   // translationOutput supprimé (plus dans le HTML)
   translationSaveContainer = document.getElementById('translation-save-container');
   translationResult = document.getElementById('translation-result');
-  saveForm = document.getElementById('save-form');
-  folderSelect = document.getElementById('folder-select');
-  newFolderNameInput = document.getElementById('new-folder-name');
-  saveConfirmButton = document.getElementById('save-confirm-button');
+  folderMoveSelect = document.getElementById('folder-move-select');
+  newFolderMoveNameInput = document.getElementById('new-folder-move-name');
   historyDiv = document.getElementById('history');
   resetButton = document.getElementById('reset-button');
 
@@ -217,18 +216,20 @@ async function handleQuizletListTranslate() {
   // Listeners
   resetButton.addEventListener('click', handleResetHistory);
   if (deleteSelectedButton) deleteSelectedButton.addEventListener('click', handleDeleteSelected);
+
+  // Gestion du déplacement via le dérouleur sous la traduction
+  if (folderMoveSelect) {
+    folderMoveSelect.addEventListener('change', handleMoveFolderChange);
+  }
+  if (newFolderMoveNameInput) {
+    newFolderMoveNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleCreateChildFolderAndMove();
+      }
+    });
+  }
   translateButton.addEventListener('click', handleTranslate);
-  folderSelect.addEventListener('change', () => {
-    if (folderSelect.value === '--new--') {
-      folderSelect.style.display = 'none';
-      newFolderNameInput.style.display = 'inline-block';
-      newFolderNameInput.focus();
-    } else {
-      newFolderNameInput.style.display = 'none';
-      folderSelect.style.display = '';
-    }
-  });
-  saveForm.addEventListener('submit', handleSaveConfirm);
 
   // Initial load
   translationSaveContainer.style.display = 'none';
@@ -306,93 +307,152 @@ async function handleTranslate() {
         const sourceLang = sourceLangSelect ? sourceLangSelect.value : 'fr';
         const targetLang = targetLangSelect ? targetLangSelect.value : 'en';
         const translatedText = await translateText(selectionText, sourceLang, targetLang);
-        // Affichage avec compteur d'occurrences
-        let count = 0;
+
+        // Sauvegarde automatique dans le dossier langue cible
+        await saveTranslation(
+          selectionText,
+          translatedText,
+          activeTab.url || '',
+          context,
+          sourceLang // nom du dossier langue source
+        );
+
+        // Récupérer le compteur d'occurrences mis à jour
         const initialData = { folders: { root: { name: 'Racine', children: [], words: [] } }, words: {} };
         chrome.storage.local.get({ memorizeData: initialData }, (data) => {
           const { words } = data.memorizeData;
           const wordId = selectionText.toLowerCase();
+          let count = 0;
           if (words[wordId] && typeof words[wordId].count === 'number') {
             count = words[wordId].count;
           }
           translationResult.innerHTML = `<b>${selectionText}</b> → ${translatedText}` +
-            `<div style='font-size:0.95em;color:#888;margin-top:4px;'>Déjà traduit <b>${count}</b> fois</div>`;
+            `<div style='font-size:0.95em;color:#888;margin-top:4px;'>Traduit <b>${count}</b> fois</div>`;
           translationSaveContainer.style.display = '';
-          // Mémoriser pour la sauvegarde
-          currentTranslationData = { selectionText, translatedText, sourceURL: activeTab.url || '', context };
-          // Remplir la liste des dossiers existants + options
-          populateFolderSelect();
+          // Mémoriser pour la suite (ajout à un autre dossier)
+          currentTranslationData = { selectionText, translatedText, sourceURL: activeTab.url || '', context, currentFolder: sourceLang };
+          // Déterminer le dossier langue id et mémoriser comme dossier courant
+          (async () => {
+            const dataMem = await loadHistory();
+            const { folders } = dataMem;
+            const langId = Object.keys(folders).find(id => (folders[id].name || '').toLowerCase() === sourceLang.toLowerCase());
+            currentTranslationData.currentFolderId = langId;
+            await populateMoveFolderSelect(sourceLang);
+          })();
+          // Rafraîchir l’historique
+          if (typeof window.__memorizeRefreshHistory === 'function') window.__memorizeRefreshHistory();
         });
       }
     );
   });
 }
 
-function populateFolderSelect() {
-  const initialData = { folders: { root: { name: 'Racine', children: [], words: [] } }, words: {} };
-  chrome.storage.local.get({ memorizeData: initialData }, (data) => {
-    const { folders } = data.memorizeData;
-    if (!folderSelect) return;
-    // Reset
-    folderSelect.innerHTML = '';
-    // Option par défaut: utiliser langue source (affichée comme Racine/langue)
-    const optRoot = document.createElement('option');
-    optRoot.value = 'root';
-    optRoot.textContent = 'Dossier langue (racine)';
-    folderSelect.appendChild(optRoot);
-    // Liste des dossiers existants (sauf root)
-    Object.entries(folders).forEach(([id, f]) => {
-      if (id === 'root') return;
-      const opt = document.createElement('option');
-      opt.value = f.name;
-      opt.textContent = f.name;
-      folderSelect.appendChild(opt);
-    });
-    // Option nouveau dossier
-    const optNew = document.createElement('option');
-    optNew.value = '--new--';
-    optNew.textContent = 'Nouveau dossier…';
-    folderSelect.appendChild(optNew);
-    // Cacher le champ nouveau dossier par défaut
-    newFolderNameInput.style.display = 'none';
-    folderSelect.style.display = '';
+async function populateMoveFolderSelect(languageName) {
+  if (!folderMoveSelect) return;
+  const data = await loadHistory(); // { folders, words }
+  const { folders } = data;
+  // Trouver le dossier langue par nom
+  let langFolderId = Object.keys(folders).find(id => (folders[id].name || '').toLowerCase() === (languageName || '').toLowerCase());
+  if (!langFolderId) return; // devrait exister car créé par saveTranslation
+  const langFolder = folders[langFolderId];
+  // Remplir le select: racine langue, enfants, créer…
+  folderMoveSelect.innerHTML = '';
+  const optRoot = document.createElement('option');
+  optRoot.value = `LANG_ROOT:${langFolderId}`;
+  optRoot.textContent = 'Dossier langue (racine)';
+  folderMoveSelect.appendChild(optRoot);
+  // Enfants
+  (langFolder.children || []).forEach(childId => {
+    const child = folders[childId];
+    if (!child) return;
+    const opt = document.createElement('option');
+    opt.value = `FOLDER:${childId}`;
+    opt.textContent = child.name;
+    folderMoveSelect.appendChild(opt);
   });
+  // Créer
+  const optCreate = document.createElement('option');
+  optCreate.value = '__create__';
+  optCreate.textContent = 'Créer un dossier…';
+  folderMoveSelect.appendChild(optCreate);
+
+  // Sélectionner le dossier courant si connu
+  if (currentTranslationData.currentFolderId) {
+    const val = currentTranslationData.currentFolderId === langFolderId ? `LANG_ROOT:${langFolderId}` : `FOLDER:${currentTranslationData.currentFolderId}`;
+    folderMoveSelect.value = val;
+  } else {
+    folderMoveSelect.value = `LANG_ROOT:${langFolderId}`;
+  }
+  // Cacher l'input création par défaut
+  if (newFolderMoveNameInput) newFolderMoveNameInput.style.display = 'none';
 }
 
-async function handleSaveConfirm(e) {
-  e.preventDefault();
-  let folderName;
-  if (folderSelect.value === '--new--') {
-    folderName = newFolderNameInput.value.trim();
-    if (!folderName) {
-      alert("Veuillez entrer un nom pour le nouveau dossier.");
-      return;
+async function handleMoveFolderChange() {
+  if (!folderMoveSelect) return;
+  const value = folderMoveSelect.value;
+  if (value === '__create__') {
+    if (newFolderMoveNameInput) {
+      newFolderMoveNameInput.style.display = 'inline-block';
+      newFolderMoveNameInput.focus();
     }
-  } else if (!folderSelect.value || folderSelect.value === 'root') {
-    folderName = sourceLangSelect ? sourceLangSelect.value : 'fr';
-  } else {
-    folderName = folderSelect.value;
+    return;
   }
-  const initialData = { folders: { root: { name: 'Racine', children: [], words: [] } }, words: {} };
-  chrome.storage.local.get({ memorizeData: initialData }, (data) => {
-    let { folders, words } = data.memorizeData;
-    let found = Object.values(folders).some(f => f.name === folderName);
-    const proceed = async () => {
-      const { selectionText, translatedText, sourceURL, context } = currentTranslationData;
-      await saveTranslation(selectionText, translatedText, sourceURL, context, folderName);
-      translationSaveContainer.style.display = 'none';
-      translationResult.textContent = '';
-      if (typeof window.__memorizeRefreshHistory === 'function') window.__memorizeRefreshHistory();
-    };
-    if (!found) {
-      const newId = 'f_' + Date.now() + '_' + Math.floor(Math.random()*10000);
-      folders[newId] = { name: folderName, parent: 'root', children: [], words: [] };
-      folders.root.children.push(newId);
-      chrome.storage.local.set({ memorizeData: { folders, words } }, proceed);
-    } else {
-      proceed();
+  // Parse folder id
+  const toFolderId = value.startsWith('LANG_ROOT:') ? value.replace('LANG_ROOT:', '') : value.replace('FOLDER:', '');
+  const { selectionText } = currentTranslationData || {};
+  if (!selectionText) return;
+  const wordId = selectionText.toLowerCase();
+  const data = await loadHistory();
+  const { folders } = data;
+  const fromFolderId = currentTranslationData.currentFolderId || null;
+  if (!toFolderId || fromFolderId === toFolderId) return;
+  // Déplacer: retirer de l'ancien, ajouter au nouveau
+  if (fromFolderId && folders[fromFolderId]) {
+    folders[fromFolderId].words = (folders[fromFolderId].words || []).filter(w => w !== wordId);
+  }
+  if (!folders[toFolderId].words.includes(wordId)) {
+    folders[toFolderId].words.push(wordId);
+  }
+  await new Promise(resolve => chrome.storage.local.set({ memorizeData: { folders, words: data.words } }, resolve));
+  currentTranslationData.currentFolderId = toFolderId;
+  // Rafraîchir historique et re-peupler pour refléter les nouveaux enfants
+  if (typeof window.__memorizeRefreshHistory === 'function') window.__memorizeRefreshHistory();
+  // Remettre l'input création invisible
+  if (newFolderMoveNameInput) newFolderMoveNameInput.style.display = 'none';
+}
+
+async function handleCreateChildFolderAndMove() {
+  if (!newFolderMoveNameInput || !folderMoveSelect) return;
+  const newName = newFolderMoveNameInput.value.trim();
+  if (!newName) return;
+  const data = await loadHistory();
+  const { folders, words } = data;
+  const languageName = sourceLangSelect ? sourceLangSelect.value : '';
+  const langFolderId = Object.keys(folders).find(id => (folders[id].name || '').toLowerCase() === languageName.toLowerCase());
+  if (!langFolderId) return;
+  // Créer le dossier enfant
+  const newId = 'f_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+  folders[newId] = { name: newName, parent: langFolderId, children: [], words: [] };
+  folders[langFolderId].children = folders[langFolderId].children || [];
+  folders[langFolderId].children.push(newId);
+  // Déplacer le mot dans ce nouveau dossier
+  const { selectionText } = currentTranslationData || {};
+  if (selectionText) {
+    const wordId = selectionText.toLowerCase();
+    const fromId = currentTranslationData.currentFolderId || langFolderId;
+    if (folders[fromId]) {
+      folders[fromId].words = (folders[fromId].words || []).filter(w => w !== wordId);
     }
-  });
+    folders[newId].words.push(wordId);
+    currentTranslationData.currentFolderId = newId;
+  }
+  await new Promise(resolve => chrome.storage.local.set({ memorizeData: { folders, words } }, resolve));
+  // UI
+  newFolderMoveNameInput.value = '';
+  newFolderMoveNameInput.style.display = 'none';
+  await populateMoveFolderSelect(languageName);
+  folderMoveSelect.value = `FOLDER:${currentTranslationData.currentFolderId}`;
+  if (typeof window.__memorizeRefreshHistory === 'function') window.__memorizeRefreshHistory();
 }
 
 function handleResetHistory() {

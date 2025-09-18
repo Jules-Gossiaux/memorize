@@ -46,16 +46,11 @@
 
     <div id="translation-save-container" style="display:none;">
       <div id="translation-result"></div>
-      <form id="save-form" style="margin-top:10px; display:flex; flex-direction:column; gap:6px; align-items:center;">
-        <div style="display:flex; gap:8px; align-items:center;">
-          <label for="folder-select" style="font-size:0.95em;">Dossier :</label>
-          <select id="folder-select" style="min-width:100px;"></select>
-          <input type="text" id="new-folder-name" placeholder="Nouveau dossier" style="display:none; min-width:100px;" />
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button id="save-confirm-button" type="submit">Sauvegarder</button>
-        </div>
-      </form>
+      <div id="folder-move-container" style="margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <label for="folder-move-select" style="font-size:0.95em;">Dossier :</label>
+        <select id="folder-move-select" style="min-width:120px;"></select>
+        <input type="text" id="new-folder-move-name" placeholder="Nouveau dossier" style="display:none; min-width:120px;" />
+      </div>
     </div>
     <hr>
     <div class="history-header">

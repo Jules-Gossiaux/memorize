@@ -42,9 +42,9 @@ Créer une extension Chrome pour traduire des mots ou phrases sélectionnés, sa
 - [V] Compléter les inputs automatiquement sur quizlet
 - [V] Ajouter un historique en plus des listes
 - [V] Ajouter un bouton + pour ajouter des dossiers au dossier racine
-- [ ] Lorsque l' on appuye sur le bouton "Traduire le texte selectionne", le compteur de vues du mot s' actualise (pour l' instant, seulement lorsque l' on sauvegarde le mot)
-lorsque l'on créée un dossier lors de la traduction d'un mot, il s'ajoute dans le dossier racine au lieu du dossier langue
-L'autocompletion quizlet ne fonctionne plus
+- [V] Lorsque l' on appuye sur le bouton "Traduire le texte selectionne", le compteur de vues du mot s' actualise (pour l' instant, seulement lorsque l' on sauvegarde le mot)
+- [ ] lorsque l'on créée un dossier lors de la traduction d'un mot, il s'ajoute dans le dossier racine au lieu du dossier langue
+- [ ] L'autocompletion quizlet ne fonctionne plus
 
 
 ## Fonctionnalités à venir / améliorations (court terme)
