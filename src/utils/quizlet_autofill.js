@@ -55,17 +55,22 @@
     editor.dispatchEvent(new Event('blur', { bubbles: true }));
   }
 
+  function getRowContainer(node) {
+    let cur = node;
+    while (cur && !(cur.querySelector && cur.querySelector('div[label="word"]') && cur.querySelector('div[label="definition"]'))) {
+      cur = cur.parentElement;
+    }
+    return cur || null;
+  }
+
   function findRows() {
-    const rows = [];
+    const set = new Set();
     const wordContainers = document.querySelectorAll('div[label="word"]');
     wordContainers.forEach(wc => {
-      let parent = wc.parentElement;
-      while (parent && !parent.querySelector('div[label="definition"]')) {
-        parent = parent.parentElement;
-      }
-      if (parent) rows.push(parent);
+      const row = getRowContainer(wc);
+      if (row) set.add(row);
     });
-    return rows;
+    return Array.from(set);
   }
 
   function attachToRow(row, prefs) {
@@ -75,25 +80,29 @@
       if (!sourceEditor || !targetEditor) return null;
 
       let timer = null;
+      // Extraction partagée pour éviter les doublons
+      const attemptFill = async () => {
+        const text = (sourceEditor.textContent || '').trim();
+        if (!text) return;
+        if (!isEmptyProse(targetEditor)) return;
+        const translated = await translateText(text, prefs.source || 'en', prefs.target || 'fr');
+        if (translated) {
+          const escaped = translated.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          setProseContent(targetEditor, escaped);
+          debug('filled', text, '->', translated);
+        }
+      };
       // On stocke la référence du callback pour pouvoir le retirer
       const onChange = async () => {
         clearTimeout(timer);
-        timer = setTimeout(async () => {
-          const text = (sourceEditor.textContent || '').trim();
-          if (!text) return;
-          if (!isEmptyProse(targetEditor)) return;
-          const translated = await translateText(text, prefs.source || 'en', prefs.target || 'fr');
-          if (translated) {
-            const escaped = translated.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            setProseContent(targetEditor, escaped);
-            debug('filled', text, '->', translated);
-          }
-        }, DEBOUNCE_MS);
+        timer = setTimeout(attemptFill, DEBOUNCE_MS);
       };
 
       const mo = new MutationObserver(onChange);
       mo.observe(sourceEditor, { childList: true, subtree: true, characterData: true });
       sourceEditor.addEventListener('input', onChange);
+      // Première tentative immédiate (si texte déjà présent)
+      attemptFill();
       // On retourne la référence du callback pour pouvoir le retirer
       return { mo, sourceEditor, targetEditor, onChange };
     } catch (e) {
@@ -123,13 +132,10 @@
             const prefs2 = await getLangPrefs();
             m.addedNodes.forEach(node => {
               if (!(node instanceof HTMLElement)) return;
-              if (node.querySelector && (node.querySelector('div[label="word"]') || node.querySelector('div[label="definition"]'))) {
-                let row = node;
-                while (row && !row.querySelector('div[label="word"]')) row = row.parentElement;
-                if (row && !attached.has(row)) {
-                  const info = attachToRow(row, prefs2);
-                  if (info) attached.set(row, info);
-                }
+              const row = (node.querySelector && getRowContainer(node)) || null;
+              if (row && !attached.has(row)) {
+                const info = attachToRow(row, prefs2);
+                if (info) attached.set(row, info);
               }
             });
           }

@@ -9,8 +9,8 @@
   "activeTab"
   ],
   "host_permissions": [
-  "<all_urls>",
-  "*://quizlet.com/*"
+    "<all_urls>",
+    "*://*.quizlet.com/*"
   ],
   "action": {
     "default_popup": "popup.html"
@@ -18,9 +18,14 @@
 
   "content_scripts": [
     {
-      "matches": ["*://quizlet.com/create-set*", "*://www.quizlet.com/create-set*"],
+      "matches": [
+        "*://quizlet.com/create-set*",
+        "*://www.quizlet.com/create-set*",
+        "*://*.quizlet.com/create*"
+      ],
       "js": ["src/utils/quizlet_autofill.js"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ]
 }
